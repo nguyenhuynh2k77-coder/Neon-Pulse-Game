@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Pulse V11: Tactical Evolution</title>
+    <title>Neon Pulse V11.1: Fixed</title>
     <style>
         body { margin: 0; padding: 0; background-color: #050510; overflow: hidden; touch-action: none; font-family: 'Segoe UI', sans-serif; color: white; user-select: none; }
         canvas { display: block; }
@@ -63,8 +63,8 @@
 </div>
 
 <div id="start-screen">
-    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V11</h1>
-    <p style="color:#ccc; margin-bottom:5px;">Lvl 5: Spike Damage | Lvl 10: Speed Boost</p>
+    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V11.1</h1>
+    <p style="color:#ccc; margin-bottom:5px;">Lvl 5: Spikes | Lvl 10: Speed</p>
     <p style="color:#ccc; margin-bottom:20px;">Lvl 15: Energy Shield</p>
     <div style="display:flex;">
         <div class="skin-btn selected" onclick="selectSkin(0)">
@@ -115,23 +115,30 @@ const skins=[
 ];
 function selectSkin(idx){ currentSkinIndex=idx; document.querySelectorAll('.skin-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
 
-// Player (Added Shield stats)
+// --- FIXED ORDER: PLAYER DEFINED BEFORE RESIZE ---
 const player={
     x:0,y:0,r:15,hp:100,maxHp:100,dead:false,
     damage:1,fireRate:20,lastShot:0,shotCount:1,rearShot:false,
-    bulletSize: 1, // New Stat: Giant Bullet
+    bulletSize: 1,
     invulnTimer:0, level:1,
-    shieldMax: 3, shieldCur: 0, shieldRegenTimer: 0 // New Shield Stats
+    shieldMax: 3, shieldCur: 0, shieldRegenTimer: 0
 };
 
+// NOW IT'S SAFE TO CALL RESIZE
+function resize(){ width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; if(!isPlaying){player.x=width/2;player.y=height/2;} }
+window.addEventListener('resize',resize); resize();
+
+if(isMobile){ document.getElementById('stick-zone').style.display='block'; document.getElementById('fire-zone').style.display='block'; }
+
+// Entities
 let bullets=[], enemyBullets=[], enemies=[], drops=[], floatingTexts=[];
 
-// Upgrades (Removed Speed, Added Giant Warhead)
+// Upgrades
 const upgradePool=[
-    {id:'multishot',name:'Đạn Kép',icon:'🔫',desc:'+1 Tia Đạn (Tụ lực)'},
+    {id:'multishot',name:'Đạn Kép',icon:'🔫',desc:'+1 Tia Đạn'},
     {id:'damage',name:'Sát Thương',icon:'💥',desc:'+1 Damage'},
     {id:'firerate',name:'Tốc Bắn',icon:'⚡',desc:'Bắn nhanh hơn'},
-    {id:'giant',name:'Đạn To',icon:'💣',desc:'Đạn to gấp đôi'}, // NEW
+    {id:'giant',name:'Đạn To',icon:'💣',desc:'Đạn to gấp đôi'},
     {id:'maxhp',name:'Máu Trâu',icon:'❤️',desc:'+20 Max HP'},
     {id:'rearshot',name:'Bắn Lưng',icon:'🔙',desc:'Bắn phía sau'},
     {id:'heal',name:'Hồi Phục',icon:'🩹',desc:'Hồi 50 HP'}
@@ -162,10 +169,6 @@ function playSound(t){
     }
 }
 
-function resize(){ width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; if(!isPlaying){player.x=width/2;player.y=height/2;} }
-window.addEventListener('resize',resize); resize();
-if(isMobile){ document.getElementById('stick-zone').style.display='block'; document.getElementById('fire-zone').style.display='block'; }
-
 function startGame(){
     document.getElementById('start-screen').style.display='none';
     const s=skins[currentSkinIndex];
@@ -174,7 +177,7 @@ function startGame(){
     player.damage=s.dmg; player.fireRate=s.fireRate; player.shotCount=1; player.rearShot=false;
     player.bulletSize=1; 
     player.x=width/2; player.y=height/2; player.level=1;
-    player.shieldCur=0; // Shield starts inactive until lvl 15
+    player.shieldCur=0; 
     
     bullets=[]; enemies=[]; enemyBullets=[]; drops=[]; floatingTexts=[];
     updateUI(); actx=new AudioContext(); actx.resume();
@@ -238,11 +241,9 @@ function applyUpgrade(id){
     if(id==='maxhp'){player.maxHp+=20;player.hp=player.maxHp;}
     if(id==='rearshot')player.rearShot=true;
     if(id==='heal')player.hp=Math.min(player.maxHp,player.hp+50);
-    if(id==='giant')player.bulletSize += 0.5; // NEW
+    if(id==='giant')player.bulletSize += 0.5;
 
-    // Check Shield Activation
     if(player.level === 15) { player.shieldCur = player.shieldMax; playSound('shield_regen'); }
-
     updateUI(); document.getElementById('upgrade-modal').style.display='none';
     isPaused=false;
 }
@@ -259,14 +260,11 @@ document.getElementById('fire-zone').ontouchstart=e=>{e.preventDefault();mouse.d
 function update(){
     if(isPaused||player.dead)return;
 
-    // SHIELD REGEN LOGIC
+    // SHIELD REGEN
     if(player.level >= 15 && player.shieldCur < player.shieldMax) {
         player.shieldRegenTimer++;
-        if(player.shieldRegenTimer > 300) { // 5 seconds (60fps * 5)
-            player.shieldCur = player.shieldMax;
-            player.shieldRegenTimer = 0;
-            playSound('shield_regen');
-            addText(player.x, player.y-40, "SHIELD READY", "#0ff");
+        if(player.shieldRegenTimer > 300) { 
+            player.shieldCur = player.shieldMax; player.shieldRegenTimer = 0; playSound('shield_regen'); addText(player.x, player.y-40, "SHIELD READY", "#0ff");
         }
     }
 
@@ -279,7 +277,6 @@ function update(){
         if(waveTransitionTimer > 120) { wave++; startWave(); }
     }
 
-    // MOVEMENT SPEED EVOLUTION (LVL 10)
     let moveSpeed = (player.level >= 10) ? 7 : 5;
     if(isMobile){player.x+=joy.dx*moveSpeed;player.y+=joy.dy*moveSpeed;if(mouse.down)fire();}
     else{if(keys['KeyW'])player.y-=moveSpeed;if(keys['KeyS'])player.y+=moveSpeed;if(keys['KeyA'])player.x-=moveSpeed;if(keys['KeyD'])player.x+=moveSpeed;if(mouse.down||keys['Space'])fire();}
@@ -288,20 +285,13 @@ function update(){
 
     bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); bullets=bullets.filter(b=>b.x>0&&b.x<width&&b.y>0&&b.y<height);
     
-    // PLAYER HIT BY ENEMY BULLET
     enemyBullets.forEach(b=>{
         b.x+=b.vx;b.y+=b.vy; 
         if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+5) {
-            // Check Shield First
             if(player.shieldCur > 0) {
-                player.shieldCur--;
-                player.shieldRegenTimer = 0; // Reset regen timer
-                playSound('shield_break');
-                addText(player.x, player.y-30, "BLOCKED", "#0ff");
-            } else {
-                takeDamage(10);
-            }
-            b.active = false; // Destroy bullet
+                player.shieldCur--; player.shieldRegenTimer = 0; playSound('shield_break'); addText(player.x, player.y-30, "BLOCKED", "#0ff");
+            } else { takeDamage(10); }
+            b.active = false;
         }
     });
     enemyBullets=enemyBullets.filter(b=>b.x>0&&b.x<width&&b.y>0&&b.y<height&&b.active!==false);
@@ -326,7 +316,6 @@ function update(){
         }
         
         for(let j=bullets.length-1;j>=0;j--){
-            // Bullet radius calc
             let br = 4 * player.bulletSize;
             if(Math.hypot(bullets[j].x-e.x,bullets[j].y-e.y) < e.r + br){
                 bullets.splice(j,1); e.hp-=player.damage; e.x+=(Math.random()-0.5)*4; break;
@@ -341,13 +330,8 @@ function update(){
              continue;
         }
 
-        // PLAYER COLLISION LOGIC
         if(enemies[i] && Math.hypot(player.x-enemies[i].x,player.y-enemies[i].y) < player.r+enemies[i].r){
-            // EVOLUTION LVL 5: RAMMING DAMAGE
-            if(player.level >= 5) {
-                enemies[i].hp -= 5; // Deal dmg back
-                createParticles(enemies[i].x, enemies[i].y, 'white', 1);
-            }
+            if(player.level >= 5) { enemies[i].hp -= 5; createParticles(enemies[i].x, enemies[i].y, 'white', 1); }
             takeDamage(20);
         }
     }
@@ -362,10 +346,8 @@ function update(){
         } else if(d.life<=0)drops.splice(i,1);
     }
     
-    // Particles
     particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.1; });
     particles = particles.filter(p => p.life > 0);
-    
     updateUI();
 }
 
@@ -377,7 +359,6 @@ function fire(){
     if(frameCount-(player.lastShot||0)<player.fireRate)return;
     player.lastShot=frameCount; playSound('shoot');
     const ang=(isMobile&&(joy.dx||joy.dy))?Math.atan2(joy.dy,joy.dx):Math.atan2(mouse.y-player.y,mouse.x-player.x);
-    // TIGHTER SPREAD V11 (0.1 instead of 0.2)
     let startAng=ang-(player.shotCount-1)*0.08; 
     for(let i=0;i<player.shotCount;i++){let a=startAng+i*0.16;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15});}
     if(player.rearShot)bullets.push({x:player.x,y:player.y,vx:Math.cos(ang+Math.PI)*15,vy:Math.sin(ang+Math.PI)*15});
@@ -385,7 +366,6 @@ function fire(){
 
 function takeDamage(n){
     if(player.invulnTimer>0)return;
-    // Check Shield for Collision (If not blocked by bullet)
     if(player.shieldCur > 0) {
         player.shieldCur--; player.shieldRegenTimer = 0; playSound('shield_break'); addText(player.x, player.y-30, "SHIELD HIT", "#0ff"); player.invulnTimer=30; return;
     }
@@ -396,12 +376,10 @@ function takeDamage(n){
 function spawnDrop(x,y,forceType){
     if(!forceType && Math.random()>0.4)return;
     let r=Math.random(),t='nuke',c='white';
-    // Removed Speed Drop
     if(r < 0.20) { t='heal'; c='red'; }
     else if(r < 0.40) { t='upgrade'; c='cyan'; }
     else if(r < 0.42) { t='nuke'; c='white'; }
     else if(!forceType) return;
-    
     if(forceType) { t=forceType; c=(t==='heal'?'red':'cyan'); }
     drops.push({x,y,type:t,color:c,life:600});
 }
@@ -413,8 +391,6 @@ function updateUI(){
     document.getElementById('hp-bar').style.width=(player.hp/player.maxHp*100)+"%";
     document.getElementById('hp-text').innerText=Math.floor(player.hp)+"/"+player.maxHp;
     document.getElementById('level-text').innerText="SHIP LVL: " + player.level;
-    
-    // Shield UI
     const shieldEl = document.getElementById('shield-container');
     if(player.level >= 15) {
         shieldEl.style.display = 'block';
@@ -439,29 +415,26 @@ function draw(){
         let rot=(isMobile&&(joy.dx||joy.dy))?Math.atan2(joy.dy,joy.dx):Math.atan2(mouse.y-player.y,mouse.x-player.x);
         ctx.rotate(rot); const s=skins[currentSkinIndex];
         ctx.fillStyle=s.body; ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.shadowBlur=10; ctx.shadowColor=s.color;
-        
         ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-15,15); ctx.lineTo(-5,0); ctx.lineTo(-15,-15); ctx.closePath(); ctx.fill(); ctx.stroke();
         
-        // EVOLUTION VISUALS
-        if(player.level >= 5) { // Wings (Ramming)
+        if(player.level >= 5) { // Wings
             ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-20, 25); ctx.lineTo(5, 10); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-20, -25); ctx.lineTo(5, -10); ctx.stroke();
         }
-        if(player.level >= 10) { // Thrusters (Speed)
+        if(player.level >= 10) { // Thrusters
             ctx.fillStyle = '#00ffff'; ctx.fillRect(-25, -5, 10, 3); ctx.fillRect(-25, 2, 10, 3);
         }
-        if(player.level >= 15 && player.shieldCur > 0) { // Aura (Shield)
+        if(player.level >= 15 && player.shieldCur > 0) { // Shield
             ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + (player.shieldCur/player.shieldMax)*0.7})`;
             ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0, 35, 0, Math.PI*2); ctx.stroke();
         }
-
         ctx.restore();
     }
 
     ctx.fillStyle='#ffff00'; 
     bullets.forEach(b=>{
         ctx.beginPath(); 
-        let br = 4 * player.bulletSize; // Giant Bullet Size
+        let br = 4 * player.bulletSize; 
         ctx.arc(b.x,b.y, br, 0, Math.PI*2); 
         ctx.fill();
     });
