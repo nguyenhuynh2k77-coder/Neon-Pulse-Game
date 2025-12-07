@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Pulse V11.1: Fixed</title>
+    <title>Neon Pulse V12: Safe Mode</title>
     <style>
         body { margin: 0; padding: 0; background-color: #050510; overflow: hidden; touch-action: none; font-family: 'Segoe UI', sans-serif; color: white; user-select: none; }
         canvas { display: block; }
         
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; box-sizing: border-box; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; box-sizing: border-box; z-index: 10; }
         .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
         .score-box { font-size: 20px; font-weight: bold; text-shadow: 0 0 10px cyan; }
         .wave-box { font-size: 24px; color: yellow; font-weight: bold; }
@@ -18,7 +18,6 @@
         #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff5500); transition: width 0.2s; }
         #hp-text { position: absolute; top: -2px; left: 0; width: 100%; text-align: center; font-size: 12px; text-shadow: 1px 1px 1px black; }
         
-        /* Shield Bar */
         #shield-container { width: 200px; height: 8px; background: #111; border: 1px solid #333; position: relative; display: none; }
         #shield-bar { width: 100%; height: 100%; background: #00ffff; box-shadow: 0 0 10px #00ffff; transition: width 0.2s; }
         
@@ -39,10 +38,14 @@
         .control-zone { position: absolute; bottom: 30px; width: 120px; height: 120px; border-radius: 50%; pointer-events: auto; display: none; border: 2px solid rgba(255,255,255,0.1); }
         #stick-zone { left: 20px; } #fire-zone { right: 20px; background: rgba(255,0,0,0.1); }
         #stick-nub { width: 50px; height: 50px; background: rgba(0,255,255,0.5); border-radius: 50%; position: relative; top: 35px; left: 35px; }
+        
+        /* Debug Error Box */
+        #error-box { position: fixed; top: 0; left: 0; width: 100%; background: red; color: white; padding: 20px; z-index: 9999; display: none; font-family: monospace; }
     </style>
 </head>
 <body>
 
+<div id="error-box"></div>
 <canvas id="gameCanvas"></canvas>
 
 <div id="ui-layer">
@@ -63,7 +66,7 @@
 </div>
 
 <div id="start-screen">
-    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V11.1</h1>
+    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V12</h1>
     <p style="color:#ccc; margin-bottom:5px;">Lvl 5: Spikes | Lvl 10: Speed</p>
     <p style="color:#ccc; margin-bottom:20px;">Lvl 15: Energy Shield</p>
     <div style="display:flex;">
@@ -98,13 +101,18 @@
 </div>
 
 <script>
+// --- ERROR CATCHER ---
+window.onerror = function(msg, url, line, col, error) {
+    const box = document.getElementById('error-box');
+    box.style.display = 'block';
+    box.innerHTML = `<strong>CRITICAL ERROR:</strong><br>${msg}<br>Line: ${line}`;
+    return false;
+};
+
+// --- INIT ---
 const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext('2d',{alpha:false});
 const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let width, height;
-
-// Core Stats
-let isPlaying=false, isPaused=false, score=0, wave=1, frameCount=0;
-let enemiesToSpawn=0, waveState='waiting', spawnTimer=0, waveTransitionTimer=0;
 
 // Skins
 let currentSkinIndex=0;
@@ -115,22 +123,25 @@ const skins=[
 ];
 function selectSkin(idx){ currentSkinIndex=idx; document.querySelectorAll('.skin-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
 
-// --- FIXED ORDER: PLAYER DEFINED BEFORE RESIZE ---
+// --- PLAYER (FULLY DEFINED) ---
 const player={
-    x:0,y:0,r:15,hp:100,maxHp:100,dead:false,
+    x:0,y:0,r:15,
+    hp:100,maxHp:100,dead:false,
     damage:1,fireRate:20,lastShot:0,shotCount:1,rearShot:false,
-    bulletSize: 1,
-    invulnTimer:0, level:1,
-    shieldMax: 3, shieldCur: 0, shieldRegenTimer: 0
+    bulletSize:1, level:1,
+    shieldMax:3, shieldCur:0, shieldRegenTimer:0,
+    invulnTimer:0
 };
 
-// NOW IT'S SAFE TO CALL RESIZE
+// Safe Resize
 function resize(){ width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; if(!isPlaying){player.x=width/2;player.y=height/2;} }
 window.addEventListener('resize',resize); resize();
 
 if(isMobile){ document.getElementById('stick-zone').style.display='block'; document.getElementById('fire-zone').style.display='block'; }
 
-// Entities
+// Game State
+let isPlaying=false, isPaused=false, score=0, wave=1, frameCount=0;
+let enemiesToSpawn=0, waveState='waiting', spawnTimer=0, waveTransitionTimer=0;
 let bullets=[], enemyBullets=[], enemies=[], drops=[], floatingTexts=[];
 
 // Upgrades
@@ -415,16 +426,17 @@ function draw(){
         let rot=(isMobile&&(joy.dx||joy.dy))?Math.atan2(joy.dy,joy.dx):Math.atan2(mouse.y-player.y,mouse.x-player.x);
         ctx.rotate(rot); const s=skins[currentSkinIndex];
         ctx.fillStyle=s.body; ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.shadowBlur=10; ctx.shadowColor=s.color;
+        
         ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-15,15); ctx.lineTo(-5,0); ctx.lineTo(-15,-15); ctx.closePath(); ctx.fill(); ctx.stroke();
         
-        if(player.level >= 5) { // Wings
+        if(player.level >= 5) { 
             ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-20, 25); ctx.lineTo(5, 10); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-20, -25); ctx.lineTo(5, -10); ctx.stroke();
         }
-        if(player.level >= 10) { // Thrusters
+        if(player.level >= 10) { 
             ctx.fillStyle = '#00ffff'; ctx.fillRect(-25, -5, 10, 3); ctx.fillRect(-25, 2, 10, 3);
         }
-        if(player.level >= 15 && player.shieldCur > 0) { // Shield
+        if(player.level >= 15 && player.shieldCur > 0) { 
             ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + (player.shieldCur/player.shieldMax)*0.7})`;
             ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0, 35, 0, Math.PI*2); ctx.stroke();
         }
