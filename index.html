@@ -3,72 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Pulse V7.1: Nuke Fix</title>
+    <title>Neon Pulse V8: Stable Balance</title>
     <style>
-        body {
-            margin: 0; padding: 0;
-            background-color: #050510;
-            overflow: hidden;
-            touch-action: none;
-            font-family: 'Segoe UI', sans-serif;
-            color: white;
-            user-select: none; -webkit-user-select: none;
-        }
+        body { margin: 0; padding: 0; background-color: #050510; overflow: hidden; touch-action: none; font-family: 'Segoe UI', sans-serif; color: white; user-select: none; }
         canvas { display: block; }
         
-        #ui-layer {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex; flex-direction: column;
-            justify-content: space-between;
-            padding: 15px; box-sizing: border-box;
-        }
-        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; box-sizing: border-box; }
         .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
         .score-box { font-size: 20px; font-weight: bold; text-shadow: 0 0 10px cyan; }
         .wave-box { font-size: 24px; color: yellow; font-weight: bold; }
-        
-        .hp-container {
-            width: 200px; height: 15px; background: #333; border: 2px solid #555; position: relative; margin-top: 5px;
-        }
+        .hp-container { width: 200px; height: 15px; background: #333; border: 2px solid #555; position: relative; margin-top: 5px; }
         #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff5500); transition: width 0.2s; }
         #hp-text { position: absolute; top: -2px; left: 0; width: 100%; text-align: center; font-size: 12px; text-shadow: 1px 1px 1px black; }
 
-        /* Upgrade Modal */
-        #upgrade-modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none;
-            flex-direction: column; justify-content: center; align-items: center;
-            pointer-events: auto; z-index: 200;
-        }
-        .card {
-            width: 120px; height: 160px; background: rgba(0, 40, 60, 0.9);
-            border: 2px solid cyan; border-radius: 8px; margin: 10px;
-            padding: 10px; text-align: center; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        #upgrade-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; z-index: 200; }
+        .card { width: 120px; height: 160px; background: rgba(0, 40, 60, 0.9); border: 2px solid cyan; border-radius: 8px; margin: 10px; padding: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .card:active { transform: scale(0.95); background: cyan; color: black; }
 
-        /* Start Screen */
-        #start-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: flex;
-            justify-content: center; align-items: center;
-            flex-direction: column; pointer-events: auto; z-index: 100;
-        }
-        .skin-btn {
-            width: 80px; height: 80px; border: 2px solid #555; border-radius: 10px; margin: 0 10px;
-            cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(255,255,255,0.05);
-        }
+        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; flex-direction: column; pointer-events: auto; z-index: 100; }
+        .skin-btn { width: 80px; height: 80px; border: 2px solid #555; border-radius: 10px; margin: 0 10px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); }
         .skin-btn.selected { border-color: white; box-shadow: 0 0 20px white; background: rgba(255,255,255,0.2); transform: scale(1.1); }
         .btn { padding: 15px 50px; margin-top: 30px; border: 2px solid cyan; color: cyan; background: transparent; font-size: 24px; cursor: pointer; font-weight: bold; }
 
-        #notify {
-            position: absolute; top: 20%; width: 100%; text-align: center; font-size: 40px; font-weight: bold;
-            text-shadow: 0 0 20px white; display: none; animation: fadeUp 1.5s forwards;
-        }
+        #notify { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 40px; font-weight: bold; text-shadow: 0 0 20px white; display: none; animation: fadeUp 1.5s forwards; }
         @keyframes fadeUp { 0% { opacity: 0; transform: translateY(20px); } 20% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
 
         .control-zone { position: absolute; bottom: 30px; width: 120px; height: 120px; border-radius: 50%; pointer-events: auto; display: none; border: 2px solid rgba(255,255,255,0.1); }
@@ -94,18 +51,18 @@
 </div>
 
 <div id="start-screen">
-    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V7.1</h1>
-    <p style="color:#ccc; margin-bottom:20px;">Nuke Bug Fixed</p>
+    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V8</h1>
+    <p style="color:#ccc; margin-bottom:20px;">Balanced & Stable</p>
     <div style="display:flex;">
         <div class="skin-btn selected" onclick="selectSkin(0)">
             <div style="font-size:30px; color:#00ffff">🚀</div>
             <div style="font-size:12px; color:#00ffff; font-weight:bold">CYAN</div>
-            <div style="font-size:10px; color:#aaa">DMG: 2</div>
+            <div style="font-size:10px; color:#aaa">DMG: 3</div>
         </div>
         <div class="skin-btn" onclick="selectSkin(1)">
             <div style="font-size:30px; color:#ff0055">🛡️</div>
             <div style="font-size:12px; color:#ff0055; font-weight:bold">RED</div>
-            <div style="font-size:10px; color:#aaa">DMG: 5</div>
+            <div style="font-size:10px; color:#aaa">DMG: 8</div>
         </div>
         <div class="skin-btn" onclick="selectSkin(2)">
             <div style="font-size:30px; color:#ffff00">⚡</div>
@@ -122,7 +79,7 @@
 </div>
 
 <div id="game-over-screen" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:none;flex-direction:column;justify-content:center;align-items:center;z-index:100;pointer-events:auto;">
-    <h1 style="color:red">FAILED</h1>
+    <h1 style="color:red">MISSION FAILED</h1>
     <p id="final-score" style="color:white;font-size:24px;">Score: 0</p>
     <button class="btn" onclick="location.reload()">RETRY</button>
 </div>
@@ -132,16 +89,16 @@ const canvas=document.getElementById('gameCanvas'); const ctx=canvas.getContext(
 const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let width, height;
 
-// Stats
+// Core Stats
 let isPlaying=false, isPaused=false, score=0, wave=1, frameCount=0;
-let enemiesToSpawn=0, waveState='waiting', spawnTimer=0;
+let enemiesToSpawn=0, waveState='waiting', spawnTimer=0, waveTransitionTimer=0;
 
-// Skins
+// Skins (REBALANCED V8)
 let currentSkinIndex=0;
 const skins=[
-    {name:'Cyan', color:'#00ffff', body:'#003333', dmg:2, fireRate:20}, 
-    {name:'Red',  color:'#ff0055', body:'#330011', dmg:5, fireRate:35},
-    {name:'Gold', color:'#ffff00', body:'#333300', dmg:1, fireRate:12}
+    {name:'Cyan', color:'#00ffff', body:'#003333', dmg:3, fireRate:25}, // Standard
+    {name:'Red',  color:'#ff0055', body:'#330011', dmg:8, fireRate:50}, // Heavy: Very Slow, High Dmg
+    {name:'Gold', color:'#ffff00', body:'#333300', dmg:1, fireRate:18}  // Rapid: Fast, Low Dmg (Nerfed Speed)
 ];
 function selectSkin(idx){ currentSkinIndex=idx; document.querySelectorAll('.skin-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
 
@@ -195,6 +152,9 @@ function startGame(){
 function startWave(){
     waveState='spawning'; document.getElementById('wave-text').innerText="WAVE "+wave;
     showNotify("WAVE "+wave);
+    waveTransitionTimer = 0; // Reset timer
+    
+    // Logic Boss Wave
     if(wave%10===0){enemiesToSpawn=1;spawnBoss('mega');}
     else if(wave%5===0){enemiesToSpawn=1;spawnBoss('mini');}
     else {enemiesToSpawn=4+Math.floor(wave*1.2);}
@@ -202,11 +162,13 @@ function startWave(){
 
 function spawnBoss(type){
     waveState='boss';
-    let hp = (type==='mega') ? 500 + wave*40 : 150 + wave*20; 
+    // BOSS HP NERF V8: Squishy!
+    let hp = (type==='mega') ? 300 + wave*30 : 100 + wave*15; 
     enemies.push({
         x:width/2, y:-100, r:type==='mega'?70:40, hp:hp, maxHp:hp, type:'boss_'+type,
         color:type==='mega'?'#ff0000':'#ffaa00', speed:type==='mega'?1:2, angle:0, reload:0
     });
+    enemiesToSpawn = 0; // Ensure no more spawn
     showNotify(type==='mega'?"MEGA BOSS":"MINI BOSS");
 }
 
@@ -239,7 +201,8 @@ function triggerUpgrade(){
 function applyUpgrade(id){
     if(id==='multishot')player.shotCount++;
     if(id==='damage')player.damage++;
-    if(id==='firerate')player.fireRate=Math.max(8, player.fireRate-2);
+    // FIRE RATE CAP V8: Min 12 frames delay (Limit max speed)
+    if(id==='firerate')player.fireRate=Math.max(12, player.fireRate-2);
     if(id==='maxhp'){player.maxHp+=20;player.hp=player.maxHp;}
     if(id==='rearshot')player.rearShot=true;
     if(id==='heal')player.hp=Math.min(player.maxHp,player.hp+50);
@@ -258,8 +221,21 @@ document.getElementById('fire-zone').ontouchstart=e=>{e.preventDefault();mouse.d
 
 function update(){
     if(isPaused||player.dead)return;
-    if(waveState==='spawning'){spawnTimer++;if(spawnTimer>40){spawnNormal();spawnTimer=0;}}
-    else if((waveState==='fighting'||waveState==='boss')&&enemies.length===0&&enemiesToSpawn===0){wave++;setTimeout(startWave,2000);waveState='waiting';}
+
+    // SPAWN LOGIC
+    if(waveState==='spawning'){
+        spawnTimer++; 
+        if(spawnTimer>40){ spawnNormal(); spawnTimer=0; }
+        if(enemiesToSpawn===0 && enemies.length===0 && waveState!=='boss') waveState='fighting';
+    }
+    // WAVE TRANSITION LOGIC (FIXED)
+    else if((waveState==='fighting'||waveState==='boss') && enemies.length===0 && enemiesToSpawn===0){
+        waveTransitionTimer++;
+        if(waveTransitionTimer > 120) { // Wait ~2 seconds (120 frames)
+            wave++;
+            startWave();
+        }
+    }
 
     if(isMobile){player.x+=joy.dx*5;player.y+=joy.dy*5;if(mouse.down)fire();}
     else{if(keys['KeyW'])player.y-=5;if(keys['KeyS'])player.y+=5;if(keys['KeyA'])player.x-=5;if(keys['KeyD'])player.x+=5;if(mouse.down||keys['Space'])fire();}
@@ -280,24 +256,13 @@ function update(){
             if(e.type!=='shooter'||Math.hypot(player.x-e.x,player.y-e.y)>250){e.x+=Math.cos(ang)*e.speed;e.y+=Math.sin(ang)*e.speed;}
             if(e.type==='shooter'){e.reload++;if(e.reload>100){enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*5,vy:Math.sin(ang)*5});e.reload=0;}}
         }
-        
-        // CHECK DEATH FROM BULLET HIT
         for(let j=bullets.length-1;j>=0;j--){
             if(Math.hypot(bullets[j].x-e.x,bullets[j].y-e.y)<e.r+5){
                 bullets.splice(j,1); e.hp-=player.damage; e.x+=(Math.random()-0.5)*4;
                 break;
             }
         }
-        
-        // GLOBAL DEATH CHECK (Fixes Nuke & Collision Death)
-        if(e.hp <= 0){
-             enemies.splice(i,1); 
-             score+=(e.type.includes('boss')?500:10); 
-             playSound('hit');
-             spawnDrop(e.x,e.y);
-             continue; // Skip to next enemy
-        }
-
+        if(e.hp<=0){enemies.splice(i,1);score+=(e.type.includes('boss')?500:10);playSound('hit');spawnDrop(e.x,e.y);continue;}
         if(enemies[i]&&Math.hypot(player.x-enemies[i].x,player.y-enemies[i].y)<player.r+enemies[i].r)takeDamage(20);
     }
 
@@ -306,13 +271,12 @@ function update(){
         if(Math.hypot(player.x-d.x,player.y-d.y)<player.r+10){
             if(d.type==='upgrade')triggerUpgrade();
             else if(d.type==='heal'){player.hp=Math.min(player.maxHp,player.hp+30);addText(player.x,player.y,"+30 HP","#0f0");}
-            else if(d.type==='speed'){player.fireRate=Math.max(8,player.fireRate-1);addText(player.x,player.y,"SPEED UP","yellow");}
-            else if(d.type==='nuke'){ 
-                // FIXED NUKE LOGIC: DAMAGE 1000
-                enemyBullets=[]; 
-                enemies.forEach(e=>e.hp-=1000); 
-                playSound('boom'); addText(player.x,player.y,"BOOM!!","white");
+            else if(d.type==='speed'){
+                // SPEED NERF: Slow reduction, Cap at 15
+                player.fireRate=Math.max(15, player.fireRate-1);
+                addText(player.x,player.y,"SPEED UP","yellow");
             }
+            else if(d.type==='nuke'){ enemyBullets=[]; enemies.forEach(e=>e.hp-=1000); playSound('boom'); addText(player.x,player.y,"BOOM!!","white");}
             drops.splice(i,1);
         } else if(d.life<=0)drops.splice(i,1);
     }
@@ -379,13 +343,7 @@ function draw(){
             else {ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(-10,10);ctx.lineTo(-10,-10);ctx.closePath();ctx.stroke();}
         }
         ctx.restore();
-        
-        // FIXED DRAWING BUG (Prevent Negative Width)
-        if(e.hp < e.maxHp && e.hp > 0){
-            let bw=e.r*2; 
-            ctx.fillStyle='red'; ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw,3);
-            ctx.fillStyle='#0f0'; ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw*(e.hp/e.maxHp),3);
-        }
+        if(e.hp<e.maxHp && e.hp>0){let bw=e.r*2;ctx.fillStyle='red';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw,3);ctx.fillStyle='#0f0';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw*(e.hp/e.maxHp),3);}
     });
     floatingTexts.forEach(t=>{t.y-=1;t.life--;ctx.fillStyle=t.c;ctx.font='bold 16px Arial';ctx.fillText(t.t,t.x,t.y);}); floatingTexts=floatingTexts.filter(t=>t.life>0);
 }
