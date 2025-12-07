@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Pulse: Cyber Defender</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #error-log {
+            position: absolute;
+            top: 0; left: 0;
+            color: red;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            display: none;
+            z-index: 9999;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+</head>
+<body>
+
+<div id="game-container"></div>
+<div id="error-log"></div>
+
+<script>
+// --- ERROR HANDLING (Hiển thị lỗi nếu màn hình đen) ---
+window.onerror = function(msg, url, line) {
+    const log = document.getElementById('error-log');
+    log.style.display = 'block';
+    log.innerHTML += `ERROR: ${msg}<br>Line: ${line}<br>`;
+    return false;
+};
+
+// --- AUDIO SYSTEM (Giả lập âm thanh không cần file mp3) ---
+const AudioSynth = {
+    ctx: null,
+    init: function() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+    playTone: function(freq, type, duration) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+    shoot: function() { this.playTone(600, 'square', 0.1); },
+    hit: function() { this.playTone(150, 'sawtooth', 0.2); },
+    start: function() { this.playTone(440, 'sine', 0.5); }
+};
+
+// --- SCENE 1: MENU (Bắt buộc để fix lỗi Audio Context) ---
+class MenuScene extends Phaser.Scene {
+    constructor() { super('MenuScene'); }
+    
+    create() {
+        // Tạo hiệu ứng nền
+        this.add.grid(this.scale.width/2, this.scale.height/2, this.scale.width, this.scale.height, 64, 64, 0x050510).setAlpha(0.5);
+        
+        const title = this.add.text(this.scale.width/2, this.scale.height/2 - 50, 'NEON PULSE', {
+            fontSize: '48px', fill: '#00ffff', fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const sub = this.add.text(this.scale.width/2, this.scale.height/2 + 50, 'CLICK TO START', {
+            fontSize: '24px', fill: '#ffffff'
+        }).setOrigin(0.5);
+
+        // Hiệu ứng nhấp nháy
+        this.tweens.add({
+            targets: sub, alpha: 0, duration: 800, yoyo: true, repeat: -1
+        });
+
+        // Click để vào game
+        this.input.on('pointerdown', () => {
+            AudioSynth.init(); // Kích hoạt âm thanh
+            AudioSynth.start();
+            this.scene.start('GameScene');
+        });
+    }
+}
+
+// --- SCENE 2: GAMEPLAY (Logic chính) ---
+class GameScene extends Phaser.Scene {
+    constructor() { super('GameScene'); }
+
+    preload() {
+        // TẠO ASSET BẰNG CODE (Không cần tải ảnh)
+        const g = this.make.graphics();
+        
+        // 1. Player (Tam giác Neon)
+        g.clear(); g.lineStyle(2, 0x00ffff); g.fillStyle(0x003333);
+        g.beginPath(); g.moveTo(20, 0); g.lineTo(-15, 15); g.lineTo(-5, 0); g.lineTo(-15, -15); g.closePath();
+        g.fillPath(); g.strokePath();
+        g.generateTexture('player', 40, 40);
+
+        // 2. Enemy (Vuông đỏ)
+        g.clear(); g.lineStyle(2, 0xff0055); g.strokeRect(0, 0, 30, 30);
+        g.generateTexture('enemy', 32, 32);
+
+        // 3. Bullet (Tròn vàng)
+        g.clear(); g.fillStyle(0xffff00); g.fillCircle(5, 5, 5);
+        g.generateTexture('bullet', 10, 10);
+
+        // 4. Particle (Hạt nổ)
+        g.clear(); g.fillStyle(0xffffff); g.fillRect(0,0,4,4);
+        g.generateTexture('particle', 4, 4);
+
+        // 5. Joystick UI
+        g.clear(); g.lineStyle(2, 0xffffff, 0.3); g.strokeCircle(50,50,50);
+        g.generateTexture('joy-base', 100, 100);
+        g.clear(); g.fillStyle(0xffffff, 0.5); g.fillCircle(25,25,25);
+        g.generateTexture('joy-stick', 50, 50);
+    }
+
+    create() {
+        this.score = 0;
+        this.combo = 0;
+        this.lastHitTime = 0;
+        
+        // World bounds
+        this.physics.world.setBounds(0, 0, this.scale.width, this.scale.height);
+        
+        // Player
+        this.player = this.physics.add.image(this.scale.width/2, this.scale.height/2, 'player');
+        this.player.setCollideWorldBounds(true);
+        this.player.setDrag(500);
+
+        // Groups
+        this.bullets = this.physics.add.group({ defaultKey: 'bullet', maxSize: 50 });
+        this.enemies = this.physics.add.group({ defaultKey: 'enemy', maxSize: 50 });
+
+        // Input
+        this.cursors = this.input.keyboard.addKeys('W,A,S,D,SPACE');
+        this.input.addPointer(2); // Multi-touch
+        
+        // UI
+        this.scoreText = this.add.text(20, 20, 'SCORE: 0', { fontSize: '20px', fill: '#0ff' });
+        this.comboText = this.add.text(20, 50, '', { fontSize: '18px', fill: '#ff0' });
+
+        // Mobile Controls UI
+        if (!this.sys.game.device.os.desktop) {
+            this.joyBase = this.add.image(100, this.scale.height - 100, 'joy-base').setAlpha(0.5).setDepth(100);
+            this.joyStick = this.add.image(100, this.scale.height - 100, 'joy-stick').setAlpha(0.8).setDepth(100);
+            this.shootBtn = this.add.circle(this.scale.width - 80, this.scale.height - 80, 40, 0xff0000, 0.3)
+                .setInteractive().setDepth(100)
+                .on('pointerdown', () => this.fire());
+        }
+
+        // Joystick Logic Variables
+        this.touchId = null;
+        this.joyOrigin = { x: 100, y: this.scale.height - 100 };
+
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.x < this.scale.width / 2 && !this.sys.game.device.os.desktop) {
+                this.touchId = pointer.id;
+                this.joyBase.setPosition(pointer.x, pointer.y);
+                this.joyStick.setPosition(pointer.x, pointer.y);
+                this.joyOrigin = { x: pointer.x, y: pointer.y };
+            } else if (this.sys.game.device.os.desktop) {
+                this.fire();
+            }
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (pointer.id === this.touchId) {
+                const angle = Phaser.Math.Angle.Between(this.joyOrigin.x, this.joyOrigin.y, pointer.x, pointer.y);
+                const dist = Math.min(Phaser.Math.Distance.Between(this.joyOrigin.x, this.joyOrigin.y, pointer.x, pointer.y), 50);
+                
+                this.joyStick.x = this.joyOrigin.x + Math.cos(angle) * dist;
+                this.joyStick.y = this.joyOrigin.y + Math.sin(angle) * dist;
+                
+                this.physics.velocityFromRotation(angle, 300, this.player.body.velocity);
+                this.player.rotation = angle;
+            } else if (this.sys.game.device.os.desktop) {
+                 this.player.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.x, pointer.y);
+            }
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (pointer.id === this.touchId) {
+                this.touchId = null;
+                this.player.setVelocity(0);
+                if (this.joyBase) {
+                    this.joyBase.setPosition(100, this.scale.height - 100);
+                    this.joyStick.setPosition(100, this.scale.height - 100);
+                }
+            }
+        });
+
+        // Spawner
+        this.time.addEvent({ delay: 800, loop: true, callback: this.spawnEnemy, callbackScope: this });
+
+        // Physics
+        this.physics.add.overlap(this.bullets, this.enemies, this.hitEnemy, undefined, this);
+        this.physics.add.overlap(this.player, this.enemies, this.hitPlayer, undefined, this);
+    }
+
+    update() {
+        // PC Movement
+        if (this.sys.game.device.os.desktop) {
+            if (this.cursors.A.isDown) this.player.setVelocityX(-300);
+            else if (this.cursors.D.isDown) this.player.setVelocityX(300);
+            else this.player.setVelocityX(0);
+
+            if (this.cursors.W.isDown) this.player.setVelocityY(-300);
+            else if (this.cursors.S.isDown) this.player.setVelocityY(300);
+            else this.player.setVelocityY(0);
+            
+            if (Phaser.Input.Keyboard.JustDown(this.cursors.SPACE)) this.fire();
+        }
+
+        // Enemy Chase
+        this.enemies.children.iterate(e => {
+            if (e && e.active) {
+                this.physics.moveToObject(e, this.player, 120);
+                e.rotation += 0.05;
+            }
+        });
+
+        // Cleanup Bullets
+        this.bullets.children.iterate(b => {
+            if (b && b.active && (b.x < 0 || b.x > this.scale.width || b.y < 0 || b.y > this.scale.height)) {
+                b.setActive(false).setVisible(false);
+            }
+        });
+    }
+
+    fire() {
+        const b = this.bullets.get(this.player.x, this.player.y);
+        if (b) {
+            b.setActive(true).setVisible(true);
+            this.physics.velocityFromRotation(this.player.rotation, 600, b.body.velocity);
+            AudioSynth.shoot();
+        }
+    }
+
+    spawnEnemy() {
+        const edge = Phaser.Math.Between(0, 3);
+        let x, y;
+        if (edge === 0) { x = Phaser.Math.Between(0, this.scale.width); y = -50; }
+        else if (edge === 1) { x = Phaser.Math.Between(0, this.scale.width); y = this.scale.height + 50; }
+        else if (edge === 2) { x = -50; y = Phaser.Math.Between(0, this.scale.height); }
+        else { x = this.scale.width + 50; y = Phaser.Math.Between(0, this.scale.height); }
+
+        const e = this.enemies.get(x, y);
+        if (e) {
+            e.setActive(true).setVisible(true);
+            e.body.reset(x, y);
+        }
+    }
+
+    hitEnemy(b, e) {
+        if (b.active && e.active) {
+            b.setActive(false).setVisible(false);
+            e.setActive(false).setVisible(false);
+            
+            // Particle
+            const p = this.add.particles('particle').createEmitter({
+                x: e.x, y: e.y, speed: 100, lifespan: 300, quantity: 5, scale: { start: 1, end: 0 }
+            });
+            this.time.delayedCall(300, () => p.destroy());
+
+            this.score += 10;
+            this.combo++;
+            this.scoreText.setText('SCORE: ' + this.score);
+            this.comboText.setText('COMBO: ' + this.combo + 'x');
+            this.time.delayedCall(2000, () => this.combo = 0); // Reset combo sau 2s
+            AudioSynth.hit();
+        }
+    }
+
+    hitPlayer(p, e) {
+        if (!e.active) return;
+        this.physics.pause();
+        p.setTint(0xff0000);
+        AudioSynth.playTone(100, 'sawtooth', 0.5);
+        this.add.text(this.scale.width/2, this.scale.height/2, 'GAME OVER\nClick to Restart', {
+            fontSize: '40px', fill: 'red', align: 'center', backgroundColor: '#000'
+        }).setOrigin(0.5).setDepth(200);
+
+        this.input.once('pointerdown', () => this.scene.restart());
+    }
+}
+
+// --- CONFIGURATION ---
+const config = {
+    type: Phaser.AUTO,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 1280, height: 720
+    },
+    backgroundColor: '#050510',
+    physics: { default: 'arcade', arcade: { debug: false } },
+    scene: [MenuScene, GameScene]
+};
+
+// Khởi chạy game
+const game = new Phaser.Game(config);
+
+</script>
+</body>
+</html>
