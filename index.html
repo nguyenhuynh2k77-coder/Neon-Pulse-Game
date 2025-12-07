@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Pulse V7: Rebalance</title>
+    <title>Neon Pulse V7.1: Nuke Fix</title>
     <style>
         body {
             margin: 0; padding: 0;
@@ -94,8 +94,8 @@
 </div>
 
 <div id="start-screen">
-    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V7</h1>
-    <p style="color:#ccc; margin-bottom:20px;">Rebalanced & Nuke Added</p>
+    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V7.1</h1>
+    <p style="color:#ccc; margin-bottom:20px;">Nuke Bug Fixed</p>
     <div style="display:flex;">
         <div class="skin-btn selected" onclick="selectSkin(0)">
             <div style="font-size:30px; color:#00ffff">🚀</div>
@@ -136,12 +136,12 @@ let width, height;
 let isPlaying=false, isPaused=false, score=0, wave=1, frameCount=0;
 let enemiesToSpawn=0, waveState='waiting', spawnTimer=0;
 
-// Skins (REBALANCED)
+// Skins
 let currentSkinIndex=0;
 const skins=[
-    {name:'Cyan', color:'#00ffff', body:'#003333', dmg:2, fireRate:20}, // Balance
-    {name:'Red',  color:'#ff0055', body:'#330011', dmg:5, fireRate:35}, // Slow but hits like truck
-    {name:'Gold', color:'#ffff00', body:'#333300', dmg:1, fireRate:12}  // Machine gun but weak
+    {name:'Cyan', color:'#00ffff', body:'#003333', dmg:2, fireRate:20}, 
+    {name:'Red',  color:'#ff0055', body:'#330011', dmg:5, fireRate:35},
+    {name:'Gold', color:'#ffff00', body:'#333300', dmg:1, fireRate:12}
 ];
 function selectSkin(idx){ currentSkinIndex=idx; document.querySelectorAll('.skin-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
 
@@ -169,7 +169,7 @@ function playSound(t){
         o.frequency.exponentialRampToValueAtTime(100,n+0.1);
         g.gain.setValueAtTime(0.05,n); g.gain.linearRampToValueAtTime(0,n+0.1);
         o.start(n); o.stop(n+0.1);
-    } else if(t==='boom'){ // Nuke sound
+    } else if(t==='boom'){ 
         o.type='sawtooth'; o.frequency.setValueAtTime(100,n); o.frequency.linearRampToValueAtTime(10,n+0.5);
         g.gain.setValueAtTime(0.5,n); g.gain.linearRampToValueAtTime(0,n+0.5);
         o.start(n); o.stop(n+0.5);
@@ -202,7 +202,6 @@ function startWave(){
 
 function spawnBoss(type){
     waveState='boss';
-    // NERFED BOSS HP AGAIN
     let hp = (type==='mega') ? 500 + wave*40 : 150 + wave*20; 
     enemies.push({
         x:width/2, y:-100, r:type==='mega'?70:40, hp:hp, maxHp:hp, type:'boss_'+type,
@@ -244,9 +243,8 @@ function applyUpgrade(id){
     if(id==='maxhp'){player.maxHp+=20;player.hp=player.maxHp;}
     if(id==='rearshot')player.rearShot=true;
     if(id==='heal')player.hp=Math.min(player.maxHp,player.hp+50);
-    
     updateUI(); document.getElementById('upgrade-modal').style.display='none';
-    isPaused=false; // FIX SPEED UP BUG: Removed requestAnimationFrame here
+    isPaused=false;
 }
 
 const keys={}; const mouse={x:0,y:0,down:false}; const joy={active:false,dx:0,dy:0,sx:0,sy:0};
@@ -282,13 +280,24 @@ function update(){
             if(e.type!=='shooter'||Math.hypot(player.x-e.x,player.y-e.y)>250){e.x+=Math.cos(ang)*e.speed;e.y+=Math.sin(ang)*e.speed;}
             if(e.type==='shooter'){e.reload++;if(e.reload>100){enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*5,vy:Math.sin(ang)*5});e.reload=0;}}
         }
+        
+        // CHECK DEATH FROM BULLET HIT
         for(let j=bullets.length-1;j>=0;j--){
             if(Math.hypot(bullets[j].x-e.x,bullets[j].y-e.y)<e.r+5){
                 bullets.splice(j,1); e.hp-=player.damage; e.x+=(Math.random()-0.5)*4;
-                if(e.hp<=0){enemies.splice(i,1);score+=(e.type.includes('boss')?500:10);spawnDrop(e.x,e.y);}
                 break;
             }
         }
+        
+        // GLOBAL DEATH CHECK (Fixes Nuke & Collision Death)
+        if(e.hp <= 0){
+             enemies.splice(i,1); 
+             score+=(e.type.includes('boss')?500:10); 
+             playSound('hit');
+             spawnDrop(e.x,e.y);
+             continue; // Skip to next enemy
+        }
+
         if(enemies[i]&&Math.hypot(player.x-enemies[i].x,player.y-enemies[i].y)<player.r+enemies[i].r)takeDamage(20);
     }
 
@@ -298,9 +307,10 @@ function update(){
             if(d.type==='upgrade')triggerUpgrade();
             else if(d.type==='heal'){player.hp=Math.min(player.maxHp,player.hp+30);addText(player.x,player.y,"+30 HP","#0f0");}
             else if(d.type==='speed'){player.fireRate=Math.max(8,player.fireRate-1);addText(player.x,player.y,"SPEED UP","yellow");}
-            else if(d.type==='nuke'){ // NUKE LOGIC
+            else if(d.type==='nuke'){ 
+                // FIXED NUKE LOGIC: DAMAGE 1000
                 enemyBullets=[]; 
-                enemies.forEach(e=>e.hp-=5); 
+                enemies.forEach(e=>e.hp-=1000); 
                 playSound('boom'); addText(player.x,player.y,"BOOM!!","white");
             }
             drops.splice(i,1);
@@ -369,7 +379,13 @@ function draw(){
             else {ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(-10,10);ctx.lineTo(-10,-10);ctx.closePath();ctx.stroke();}
         }
         ctx.restore();
-        if(e.hp<e.maxHp){let bw=e.r*2;ctx.fillStyle='red';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw,3);ctx.fillStyle='#0f0';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw*(e.hp/e.maxHp),3);}
+        
+        // FIXED DRAWING BUG (Prevent Negative Width)
+        if(e.hp < e.maxHp && e.hp > 0){
+            let bw=e.r*2; 
+            ctx.fillStyle='red'; ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw,3);
+            ctx.fillStyle='#0f0'; ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw*(e.hp/e.maxHp),3);
+        }
     });
     floatingTexts.forEach(t=>{t.y-=1;t.life--;ctx.fillStyle=t.c;ctx.font='bold 16px Arial';ctx.fillText(t.t,t.x,t.y);}); floatingTexts=floatingTexts.filter(t=>t.life>0);
 }
