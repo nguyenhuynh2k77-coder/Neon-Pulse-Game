@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Pulse V10: Evolution</title>
+    <title>Neon Pulse V11: Tactical Evolution</title>
     <style>
         body { margin: 0; padding: 0; background-color: #050510; overflow: hidden; touch-action: none; font-family: 'Segoe UI', sans-serif; color: white; user-select: none; }
         canvas { display: block; }
@@ -12,20 +12,26 @@
         .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
         .score-box { font-size: 20px; font-weight: bold; text-shadow: 0 0 10px cyan; }
         .wave-box { font-size: 24px; color: yellow; font-weight: bold; }
-        .hp-container { width: 200px; height: 15px; background: #333; border: 2px solid #555; position: relative; margin-top: 5px; }
+        
+        .hp-wrapper { display: flex; flex-direction: column; gap: 5px; }
+        .hp-container { width: 200px; height: 15px; background: #333; border: 2px solid #555; position: relative; }
         #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff5500); transition: width 0.2s; }
         #hp-text { position: absolute; top: -2px; left: 0; width: 100%; text-align: center; font-size: 12px; text-shadow: 1px 1px 1px black; }
-        .level-text { font-size: 14px; color: #00ffff; margin-top: 5px; font-weight: bold; }
+        
+        /* Shield Bar */
+        #shield-container { width: 200px; height: 8px; background: #111; border: 1px solid #333; position: relative; display: none; }
+        #shield-bar { width: 100%; height: 100%; background: #00ffff; box-shadow: 0 0 10px #00ffff; transition: width 0.2s; }
+        
+        .level-text { font-size: 14px; color: #00ffff; font-weight: bold; }
 
         #upgrade-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; z-index: 200; }
-        .card { width: 120px; height: 160px; background: rgba(0, 40, 60, 0.9); border: 2px solid cyan; border-radius: 8px; margin: 10px; padding: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
+        .card { width: 120px; height: 170px; background: rgba(0, 40, 60, 0.9); border: 2px solid cyan; border-radius: 8px; margin: 10px; padding: 10px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
         .card:active { transform: scale(0.95); background: cyan; color: black; }
 
         #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; flex-direction: column; pointer-events: auto; z-index: 100; }
         .skin-btn { width: 80px; height: 80px; border: 2px solid #555; border-radius: 10px; margin: 0 10px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: 0.2s; }
         .skin-btn.selected { border-color: white; box-shadow: 0 0 20px white; background: rgba(255,255,255,0.2); transform: scale(1.1); }
         .btn { padding: 15px 50px; margin-top: 30px; border: 2px solid cyan; color: cyan; background: transparent; font-size: 24px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn:active { transform: scale(0.9); }
 
         #notify { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 40px; font-weight: bold; text-shadow: 0 0 20px white; display: none; animation: fadeUp 1.5s forwards; }
         @keyframes fadeUp { 0% { opacity: 0; transform: translateY(20px); } 20% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
@@ -43,7 +49,10 @@
     <div class="hud-top">
         <div>
             <div class="score-box" id="score-text">SCORE: 0</div>
-            <div class="hp-container"><div id="hp-bar"></div><div id="hp-text">100/100</div></div>
+            <div class="hp-wrapper">
+                <div class="hp-container"><div id="hp-bar"></div><div id="hp-text">100/100</div></div>
+                <div id="shield-container"><div id="shield-bar"></div></div>
+            </div>
             <div class="level-text" id="level-text">SHIP LVL: 1</div>
         </div>
         <div class="wave-box" id="wave-text">WAVE 1</div>
@@ -54,8 +63,9 @@
 </div>
 
 <div id="start-screen">
-    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V10</h1>
-    <p style="color:#ccc; margin-bottom:20px;">Evolution & Rewards</p>
+    <h1 style="color:cyan; font-size:40px; margin-bottom:10px;">NEON PULSE V11</h1>
+    <p style="color:#ccc; margin-bottom:5px;">Lvl 5: Spike Damage | Lvl 10: Speed Boost</p>
+    <p style="color:#ccc; margin-bottom:20px;">Lvl 15: Energy Shield</p>
     <div style="display:flex;">
         <div class="skin-btn selected" onclick="selectSkin(0)">
             <div style="font-size:30px; color:#00ffff">🚀</div>
@@ -105,15 +115,23 @@ const skins=[
 ];
 function selectSkin(idx){ currentSkinIndex=idx; document.querySelectorAll('.skin-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
 
-// Player (Added level for Evolution)
-const player={x:0,y:0,r:15,hp:100,maxHp:100,dead:false,damage:1,fireRate:20,lastShot:0,shotCount:1,rearShot:false,invulnTimer:0, level:1};
+// Player (Added Shield stats)
+const player={
+    x:0,y:0,r:15,hp:100,maxHp:100,dead:false,
+    damage:1,fireRate:20,lastShot:0,shotCount:1,rearShot:false,
+    bulletSize: 1, // New Stat: Giant Bullet
+    invulnTimer:0, level:1,
+    shieldMax: 3, shieldCur: 0, shieldRegenTimer: 0 // New Shield Stats
+};
+
 let bullets=[], enemyBullets=[], enemies=[], drops=[], floatingTexts=[];
 
-// Upgrades
+// Upgrades (Removed Speed, Added Giant Warhead)
 const upgradePool=[
-    {id:'multishot',name:'Đạn Kép',icon:'🔫',desc:'+1 Tia Đạn (Max 5)'},
+    {id:'multishot',name:'Đạn Kép',icon:'🔫',desc:'+1 Tia Đạn (Tụ lực)'},
     {id:'damage',name:'Sát Thương',icon:'💥',desc:'+1 Damage'},
     {id:'firerate',name:'Tốc Bắn',icon:'⚡',desc:'Bắn nhanh hơn'},
+    {id:'giant',name:'Đạn To',icon:'💣',desc:'Đạn to gấp đôi'}, // NEW
     {id:'maxhp',name:'Máu Trâu',icon:'❤️',desc:'+20 Max HP'},
     {id:'rearshot',name:'Bắn Lưng',icon:'🔙',desc:'Bắn phía sau'},
     {id:'heal',name:'Hồi Phục',icon:'🩹',desc:'Hồi 50 HP'}
@@ -129,6 +147,14 @@ function playSound(t){
         o.frequency.exponentialRampToValueAtTime(100,n+0.1);
         g.gain.setValueAtTime(0.05,n); g.gain.linearRampToValueAtTime(0,n+0.1);
         o.start(n); o.stop(n+0.1);
+    } else if(t==='shield_break'){
+        o.type='square'; o.frequency.setValueAtTime(150,n); o.frequency.linearRampToValueAtTime(50,n+0.3);
+        g.gain.setValueAtTime(0.3,n); g.gain.linearRampToValueAtTime(0,n+0.3);
+        o.start(n); o.stop(n+0.3);
+    } else if(t==='shield_regen'){
+        o.type='sine'; o.frequency.setValueAtTime(400,n); o.frequency.linearRampToValueAtTime(800,n+0.5);
+        g.gain.setValueAtTime(0.3,n); g.gain.linearRampToValueAtTime(0,n+0.5);
+        o.start(n); o.stop(n+0.5);
     } else if(t==='boom'){ 
         o.type='lowpass'; o.frequency.setValueAtTime(100,n); o.frequency.linearRampToValueAtTime(10,n+0.5);
         g.gain.setValueAtTime(0.8,n); g.gain.linearRampToValueAtTime(0,n+0.8);
@@ -146,7 +172,10 @@ function startGame(){
     isPlaying=true; isPaused=false; score=0; wave=1;
     player.hp=100; player.maxHp=100; player.dead=false;
     player.damage=s.dmg; player.fireRate=s.fireRate; player.shotCount=1; player.rearShot=false;
+    player.bulletSize=1; 
     player.x=width/2; player.y=height/2; player.level=1;
+    player.shieldCur=0; // Shield starts inactive until lvl 15
+    
     bullets=[]; enemies=[]; enemyBullets=[]; drops=[]; floatingTexts=[];
     updateUI(); actx=new AudioContext(); actx.resume();
     startWave(); requestAnimationFrame(loop);
@@ -177,11 +206,7 @@ function spawnNormal(){
     let type='chaser', hp=2+Math.floor(wave/5), spd=2+Math.random(), r=15, col='#ff0055';
     if(wave>=2 && Math.random()>0.7){type='shooter';col='#00ff00';spd=1.5;hp=3;}
     if(wave>=4 && Math.random()>0.9){type='tank';r=25;hp=8;col='#5555ff';spd=1;}
-    
-    // SCALING ENEMY HP BY WAVE (10% increase per wave)
-    let hpMultiplier = 1 + (wave * 0.1);
-    hp = Math.floor(hp * hpMultiplier);
-
+    let hpMultiplier = 1 + (wave * 0.1); hp = Math.floor(hp * hpMultiplier);
     let ex=Math.random()*width, ey=Math.random()*height;
     if(Math.random()<0.5)ex=(ex<width/2)?-50:width+50; else ey=(ey<height/2)?-50:height+50;
     enemies.push({x:ex, y:ey, r, hp, maxHp:hp, type, color:col, speed:spd, angle:0, reload:0});
@@ -194,14 +219,10 @@ function triggerUpgrade(){
     modal.style.display='flex'; box.innerHTML='';
     let choices=[]; while(choices.length<3){
         let item=upgradePool[Math.floor(Math.random()*upgradePool.length)];
-        
-        // CHECK CAPS
-        if(item.id === 'multishot' && player.shotCount >= 5) continue; // Max 5 shots
+        if(item.id === 'multishot' && player.shotCount >= 5) continue;
         if(!choices.includes(item))choices.push(item);
     }
-    // Fallback if choices < 3 (rare)
     while(choices.length<3) choices.push(upgradePool[1]);
-
     choices.forEach(item=>{
         let c=document.createElement('div'); c.className='card';
         c.innerHTML=`<div style="font-size:35px">${item.icon}</div><div style="font-weight:bold">${item.name}</div><div style="font-size:11px;color:#ccc">${item.desc}</div>`;
@@ -210,13 +231,18 @@ function triggerUpgrade(){
 }
 
 function applyUpgrade(id){
-    player.level++; // Increase level
+    player.level++;
     if(id==='multishot')player.shotCount++;
     if(id==='damage')player.damage++;
     if(id==='firerate')player.fireRate=Math.max(12, player.fireRate-2);
     if(id==='maxhp'){player.maxHp+=20;player.hp=player.maxHp;}
     if(id==='rearshot')player.rearShot=true;
     if(id==='heal')player.hp=Math.min(player.maxHp,player.hp+50);
+    if(id==='giant')player.bulletSize += 0.5; // NEW
+
+    // Check Shield Activation
+    if(player.level === 15) { player.shieldCur = player.shieldMax; playSound('shield_regen'); }
+
     updateUI(); document.getElementById('upgrade-modal').style.display='none';
     isPaused=false;
 }
@@ -233,6 +259,17 @@ document.getElementById('fire-zone').ontouchstart=e=>{e.preventDefault();mouse.d
 function update(){
     if(isPaused||player.dead)return;
 
+    // SHIELD REGEN LOGIC
+    if(player.level >= 15 && player.shieldCur < player.shieldMax) {
+        player.shieldRegenTimer++;
+        if(player.shieldRegenTimer > 300) { // 5 seconds (60fps * 5)
+            player.shieldCur = player.shieldMax;
+            player.shieldRegenTimer = 0;
+            playSound('shield_regen');
+            addText(player.x, player.y-40, "SHIELD READY", "#0ff");
+        }
+    }
+
     if(waveState==='spawning'){
         spawnTimer++; if(spawnTimer>40){ spawnNormal(); spawnTimer=0; }
         if(enemiesToSpawn===0 && enemies.length===0 && waveState!=='boss') waveState='fighting';
@@ -242,64 +279,77 @@ function update(){
         if(waveTransitionTimer > 120) { wave++; startWave(); }
     }
 
-    if(isMobile){player.x+=joy.dx*5;player.y+=joy.dy*5;if(mouse.down)fire();}
-    else{if(keys['KeyW'])player.y-=5;if(keys['KeyS'])player.y+=5;if(keys['KeyA'])player.x-=5;if(keys['KeyD'])player.x+=5;if(mouse.down||keys['Space'])fire();}
+    // MOVEMENT SPEED EVOLUTION (LVL 10)
+    let moveSpeed = (player.level >= 10) ? 7 : 5;
+    if(isMobile){player.x+=joy.dx*moveSpeed;player.y+=joy.dy*moveSpeed;if(mouse.down)fire();}
+    else{if(keys['KeyW'])player.y-=moveSpeed;if(keys['KeyS'])player.y+=moveSpeed;if(keys['KeyA'])player.x-=moveSpeed;if(keys['KeyD'])player.x+=moveSpeed;if(mouse.down||keys['Space'])fire();}
     player.x=Math.max(15,Math.min(width-15,player.x)); player.y=Math.max(15,Math.min(height-15,player.y));
     if(player.invulnTimer>0)player.invulnTimer--;
 
     bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); bullets=bullets.filter(b=>b.x>0&&b.x<width&&b.y>0&&b.y<height);
-    enemyBullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy; if(Math.hypot(b.x-player.x,b.y-player.y)<player.r)takeDamage(10);});
-    enemyBullets=enemyBullets.filter(b=>b.x>0&&b.x<width&&b.y>0&&b.y<height);
+    
+    // PLAYER HIT BY ENEMY BULLET
+    enemyBullets.forEach(b=>{
+        b.x+=b.vx;b.y+=b.vy; 
+        if(Math.hypot(b.x-player.x,b.y-player.y)<player.r+5) {
+            // Check Shield First
+            if(player.shieldCur > 0) {
+                player.shieldCur--;
+                player.shieldRegenTimer = 0; // Reset regen timer
+                playSound('shield_break');
+                addText(player.x, player.y-30, "BLOCKED", "#0ff");
+            } else {
+                takeDamage(10);
+            }
+            b.active = false; // Destroy bullet
+        }
+    });
+    enemyBullets=enemyBullets.filter(b=>b.x>0&&b.x<width&&b.y>0&&b.y<height&&b.active!==false);
 
     for(let i=enemies.length-1;i>=0;i--){
         let e=enemies[i], ang=Math.atan2(player.y-e.y,player.x-e.x);
         if(e.type.includes('boss')){
             e.y=Math.min(100,e.y+e.speed); e.reload++;
-            // BOSS TACTICS V9
             let hasSpiral = (e.type==='boss_mega') || (wave > 10);
-            let hasShotgun = (wave > 15);
-            let hasChaos = (wave > 25);
-            
             if(hasSpiral && e.reload > 10) {
                 e.angle += 0.15;
                 enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(e.angle)*4, vy:Math.sin(e.angle)*4});
                 if(e.type==='boss_mega') enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(e.angle+Math.PI)*4, vy:Math.sin(e.angle+Math.PI)*4});
                 e.reload = 0;
             }
-            if(hasShotgun && Math.random() < 0.02) { 
-                for(let k=-2; k<=2; k++) enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(ang + k*0.3)*6, vy:Math.sin(ang + k*0.3)*6});
-            }
-            if(hasChaos && Math.random() < 0.05) {
-                let rAng = Math.random() * Math.PI * 2; enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(rAng)*5, vy:Math.sin(rAng)*5});
-            }
             if(!hasSpiral && e.reload > 50) {
                 enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(ang)*6, vy:Math.sin(ang)*6}); e.reload = 0;
             }
-
         } else {
             if(e.type!=='shooter'||Math.hypot(player.x-e.x,player.y-e.y)>250){e.x+=Math.cos(ang)*e.speed;e.y+=Math.sin(ang)*e.speed;}
             if(e.type==='shooter'){e.reload++;if(e.reload>100){enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*5,vy:Math.sin(ang)*5});e.reload=0;}}
         }
         
         for(let j=bullets.length-1;j>=0;j--){
-            if(Math.hypot(bullets[j].x-e.x,bullets[j].y-e.y)<e.r+5){
+            // Bullet radius calc
+            let br = 4 * player.bulletSize;
+            if(Math.hypot(bullets[j].x-e.x,bullets[j].y-e.y) < e.r + br){
                 bullets.splice(j,1); e.hp-=player.damage; e.x+=(Math.random()-0.5)*4; break;
             }
         }
         
         if(e.hp <= 0){
-             enemies.splice(i,1); 
-             score+=(e.type.includes('boss')?500:10); 
-             playSound('hit');
-             
-             // GUARANTEED REWARD V10
+             enemies.splice(i,1); score+=(e.type.includes('boss')?500:10); playSound('hit');
              if(e.type==='boss_mini') spawnDrop(e.x, e.y, 'upgrade');
              else if(e.type==='boss_mega') { spawnDrop(e.x, e.y, 'upgrade'); spawnDrop(e.x+20, e.y, 'heal'); }
              else spawnDrop(e.x,e.y);
-             
              continue;
         }
-        if(enemies[i]&&Math.hypot(player.x-enemies[i].x,player.y-enemies[i].y)<player.r+enemies[i].r)takeDamage(20);
+
+        // PLAYER COLLISION LOGIC
+        if(enemies[i] && Math.hypot(player.x-enemies[i].x,player.y-enemies[i].y) < player.r+enemies[i].r){
+            // EVOLUTION LVL 5: RAMMING DAMAGE
+            if(player.level >= 5) {
+                enemies[i].hp -= 5; // Deal dmg back
+                createParticles(enemies[i].x, enemies[i].y, 'white', 1);
+            }
+            takeDamage(20);
+        }
     }
 
     for(let i=drops.length-1;i>=0;i--){
@@ -307,44 +357,52 @@ function update(){
         if(Math.hypot(player.x-d.x,player.y-d.y)<player.r+10){
             if(d.type==='upgrade')triggerUpgrade();
             else if(d.type==='heal'){player.hp=Math.min(player.maxHp,player.hp+30);addText(player.x,player.y,"+30 HP","#0f0");}
-            else if(d.type==='speed'){player.fireRate=Math.max(12, player.fireRate-1);addText(player.x,player.y,"SPEED UP","yellow");}
-            else if(d.type==='nuke'){ 
-                enemyBullets=[]; 
-                enemies.forEach(e => { if(e.type.includes('boss')) { e.hp -= 50; addText(e.x, e.y, "-50", "white"); } else { e.hp -= 1000; } }); 
-                playSound('boom'); addText(player.x,player.y,"BOOM!!","white");
-            }
+            else if(d.type==='nuke'){ enemyBullets=[]; enemies.forEach(e => { if(e.type.includes('boss')) { e.hp -= 50; addText(e.x, e.y, "-50", "white"); } else { e.hp -= 1000; } }); playSound('boom'); addText(player.x,player.y,"BOOM!!","white");}
             drops.splice(i,1);
         } else if(d.life<=0)drops.splice(i,1);
     }
+    
+    // Particles
+    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.1; });
+    particles = particles.filter(p => p.life > 0);
+    
     updateUI();
+}
+
+function createParticles(x, y, color, count) {
+    for(let i=0; i<count; i++) particles.push({ x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 1.0, color });
 }
 
 function fire(){
     if(frameCount-(player.lastShot||0)<player.fireRate)return;
     player.lastShot=frameCount; playSound('shoot');
     const ang=(isMobile&&(joy.dx||joy.dy))?Math.atan2(joy.dy,joy.dx):Math.atan2(mouse.y-player.y,mouse.x-player.x);
-    let startAng=ang-(player.shotCount-1)*0.1;
-    for(let i=0;i<player.shotCount;i++){let a=startAng+i*0.2;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15});}
+    // TIGHTER SPREAD V11 (0.1 instead of 0.2)
+    let startAng=ang-(player.shotCount-1)*0.08; 
+    for(let i=0;i<player.shotCount;i++){let a=startAng+i*0.16;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15});}
     if(player.rearShot)bullets.push({x:player.x,y:player.y,vx:Math.cos(ang+Math.PI)*15,vy:Math.sin(ang+Math.PI)*15});
 }
 
 function takeDamage(n){
     if(player.invulnTimer>0)return;
+    // Check Shield for Collision (If not blocked by bullet)
+    if(player.shieldCur > 0) {
+        player.shieldCur--; player.shieldRegenTimer = 0; playSound('shield_break'); addText(player.x, player.y-30, "SHIELD HIT", "#0ff"); player.invulnTimer=30; return;
+    }
     player.hp-=n; player.invulnTimer=60; addText(player.x,player.y-30,"-"+n,"red");
     if(player.hp<=0){player.hp=0;isPlaying=false;document.getElementById('game-over-screen').style.display='flex';document.getElementById('final-score').innerText="Score: "+score;}
 }
 
 function spawnDrop(x,y,forceType){
     if(!forceType && Math.random()>0.4)return;
-    let r=Math.random(),t='score',c='white';
-    if(r < 0.15) { t='heal'; c='red'; }
-    else if(r < 0.30) { t='upgrade'; c='cyan'; }
-    else if(r < 0.40) { t='speed'; c='yellow'; }
+    let r=Math.random(),t='nuke',c='white';
+    // Removed Speed Drop
+    if(r < 0.20) { t='heal'; c='red'; }
+    else if(r < 0.40) { t='upgrade'; c='cyan'; }
     else if(r < 0.42) { t='nuke'; c='white'; }
     else if(!forceType) return;
     
     if(forceType) { t=forceType; c=(t==='heal'?'red':'cyan'); }
-    
     drops.push({x,y,type:t,color:c,life:600});
 }
 
@@ -355,6 +413,13 @@ function updateUI(){
     document.getElementById('hp-bar').style.width=(player.hp/player.maxHp*100)+"%";
     document.getElementById('hp-text').innerText=Math.floor(player.hp)+"/"+player.maxHp;
     document.getElementById('level-text').innerText="SHIP LVL: " + player.level;
+    
+    // Shield UI
+    const shieldEl = document.getElementById('shield-container');
+    if(player.level >= 15) {
+        shieldEl.style.display = 'block';
+        document.getElementById('shield-bar').style.width = (player.shieldCur / player.shieldMax * 100) + "%";
+    } else { shieldEl.style.display = 'none'; }
 }
 
 function draw(){
@@ -366,7 +431,7 @@ function draw(){
     drops.forEach(d=>{
         ctx.fillStyle=d.color; ctx.beginPath(); ctx.arc(d.x,d.y,10,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='black'; ctx.font='10px Arial'; ctx.textAlign='center';
-        ctx.fillText(d.type==='upgrade'?'⚡':(d.type==='heal'?'❤':(d.type==='speed'?'⏩':'☢️')), d.x,d.y+3);
+        ctx.fillText(d.type==='upgrade'?'⚡':(d.type==='heal'?'❤':'☢️'), d.x,d.y+3);
     });
 
     if(!player.dead&&player.invulnTimer%4<2){
@@ -375,30 +440,32 @@ function draw(){
         ctx.rotate(rot); const s=skins[currentSkinIndex];
         ctx.fillStyle=s.body; ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.shadowBlur=10; ctx.shadowColor=s.color;
         
-        // BASE SHIP
         ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-15,15); ctx.lineTo(-5,0); ctx.lineTo(-15,-15); ctx.closePath(); ctx.fill(); ctx.stroke();
         
-        // EVOLUTION V10: VISUALS
-        // LVL 5: WINGS
-        if(player.level >= 5) {
+        // EVOLUTION VISUALS
+        if(player.level >= 5) { // Wings (Ramming)
             ctx.beginPath(); ctx.moveTo(-5, 10); ctx.lineTo(-20, 25); ctx.lineTo(5, 10); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-20, -25); ctx.lineTo(5, -10); ctx.stroke();
         }
-        // LVL 10: THRUSTERS
-        if(player.level >= 10) {
-            ctx.fillStyle = '#00ffff';
-            ctx.fillRect(-22, -5, 10, 3); ctx.fillRect(-22, 2, 10, 3);
+        if(player.level >= 10) { // Thrusters (Speed)
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(-25, -5, 10, 3); ctx.fillRect(-25, 2, 10, 3);
         }
-        // LVL 15: AURA
-        if(player.level >= 15) {
-            ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + Math.sin(frameCount/10)*0.2})`;
-            ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0,0, 30, 0, Math.PI*2); ctx.stroke();
+        if(player.level >= 15 && player.shieldCur > 0) { // Aura (Shield)
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + (player.shieldCur/player.shieldMax)*0.7})`;
+            ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0, 35, 0, Math.PI*2); ctx.stroke();
         }
 
         ctx.restore();
     }
 
-    ctx.fillStyle='#ffff00'; bullets.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
+    ctx.fillStyle='#ffff00'; 
+    bullets.forEach(b=>{
+        ctx.beginPath(); 
+        let br = 4 * player.bulletSize; // Giant Bullet Size
+        ctx.arc(b.x,b.y, br, 0, Math.PI*2); 
+        ctx.fill();
+    });
+    
     ctx.fillStyle='#fff'; enemyBullets.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
 
     enemies.forEach(e=>{
@@ -413,6 +480,8 @@ function draw(){
         ctx.restore();
         if(e.hp<e.maxHp && e.hp>0){let bw=e.r*2;ctx.fillStyle='red';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw,3);ctx.fillStyle='#0f0';ctx.fillRect(e.x-bw/2,e.y-e.r-8,bw*(e.hp/e.maxHp),3);}
     });
+    
+    particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); ctx.globalAlpha = 1; });
     floatingTexts.forEach(t=>{t.y-=1;t.life--;ctx.fillStyle=t.c;ctx.font='bold 16px Arial';ctx.fillText(t.t,t.x,t.y);}); floatingTexts=floatingTexts.filter(t=>t.life>0);
 }
 
